@@ -1,0 +1,19 @@
+{
+    "prompt": "Write a story about an artificial specific intelligence.",
+    "model": "llama3.2:1b",
+    "n_beams": 8,
+    "max_iterations": 5,
+    "temperature": 0.5,
+    "max_tokens": 125,
+    "packages": {
+        "ollama": "",
+        "nltk": "",
+        "sentence-transformers": "",
+        "pandas": "",
+        "altair": ""
+    },
+    "resources": {
+        "cpu": 4,
+        "memory": 12000
+    }
+}

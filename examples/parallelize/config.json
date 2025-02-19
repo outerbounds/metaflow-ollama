@@ -1,0 +1,13 @@
+{
+    "models": [
+        "llama3.2:1b", 
+        "qwen2.5:0.5b",
+        "deepseek-r1:1.5b",
+        "gemma:2b",
+        "hermes3:3b"
+    ],
+    "message": {
+        "role": "user",
+        "content": "What are the leading Chinese tech companies?"
+    }
+}
