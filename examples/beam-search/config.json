@@ -8,7 +8,6 @@
     "packages": {
         "ollama": "",
         "nltk": "",
-        "sentence-transformers": "",
         "pandas": "",
         "altair": ""
     },

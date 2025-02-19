@@ -9,7 +9,7 @@ import nltk
 import numpy as np
 from nltk.tokenize import sent_tokenize
 from ollama import Client
-from sentence_transformers import SentenceTransformer
+# from sentence_transformers import SentenceTransformer
 
 # logging.basicConfig(
 #     level=logging.DEBUG,
@@ -99,15 +99,15 @@ class aLaCarteRewardModel:
             # 'length': 0.25,      
             'coherence': 0.25,   
             'diversity': 0.25,    
-            'relevance': 0.25,    
-            'similarity': 0.25    
+            'relevance': 0.50,    
+            # 'similarity': 0.25    
         }
-        try:
-            self.sentence_model = SentenceTransformer('all-MiniLM-L6-v2')
+        # try:
+            # self.sentence_model = SentenceTransformer('all-MiniLM-L6-v2')
             # logger.debug("SentenceTransformer loaded successfully.")
-        except Exception as e:
+        # except Exception as e:
             # logger.exception("Error loading SentenceTransformer: %s", e)
-            raise e
+            # raise e
 
     def _score_length(self, text: str) -> float:
         words = len(text.split())
@@ -147,19 +147,19 @@ class aLaCarteRewardModel:
         overlap = len(prompt_terms.intersection(completion_terms))
         return min(1.0, overlap / len(prompt_terms))
 
-    def _score_embedding(self, prompt: str, completion: str) -> float:
-        try:
-            prompt_emb = self.sentence_model.encode(prompt)
-            completion_emb = self.sentence_model.encode(completion)
-            norm_prompt = np.linalg.norm(prompt_emb)
-            norm_completion = np.linalg.norm(completion_emb)
-            if norm_prompt < 1e-6 or norm_completion < 1e-6:
-                return 0.0
-            similarity = np.dot(prompt_emb, completion_emb) / (norm_prompt * norm_completion)
-            return float(similarity)
-        except Exception as e:
-            # logger.exception("Error computing embedding similarity: %s", e)
-            return 0.0
+    # def _score_embedding(self, prompt: str, completion: str) -> float:
+    #     try:
+    #         prompt_emb = self.sentence_model.encode(prompt)
+    #         completion_emb = self.sentence_model.encode(completion)
+    #         norm_prompt = np.linalg.norm(prompt_emb)
+    #         norm_completion = np.linalg.norm(completion_emb)
+    #         if norm_prompt < 1e-6 or norm_completion < 1e-6:
+    #             return 0.0
+    #         similarity = np.dot(prompt_emb, completion_emb) / (norm_prompt * norm_completion)
+    #         return float(similarity)
+    #     except Exception as e:
+    #         # logger.exception("Error computing embedding similarity: %s", e)
+    #         return 0.0
 
     def score_with_breakdown(self, prompt: str, completion: str) -> Tuple[float, Dict[str, float]]:
         scores = {
@@ -167,7 +167,7 @@ class aLaCarteRewardModel:
             'coherence': self._score_coherence(completion),
             'diversity': self._score_diversity(completion),
             'relevance': self._score_relevance(prompt, completion),
-            'similarity': self._score_embedding(prompt, completion)
+            # 'similarity': self._score_embedding(prompt, completion)
         }
         final_score = sum(score * self.weights.get(metric, 0) for metric, score in scores.items())
         return final_score, scores
