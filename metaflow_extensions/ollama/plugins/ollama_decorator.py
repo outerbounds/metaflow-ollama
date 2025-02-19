@@ -12,7 +12,7 @@ class OllamaDecorator(StepDecorator):
     User code call
     -----------
     @ollama(
-        models=['meta/llama3-8b-instruct', 'meta/llama3-70b-instruct'],
+        models=[...],
         backend='local'
     )
 
