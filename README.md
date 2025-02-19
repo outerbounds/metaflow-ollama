@@ -1,5 +1,10 @@
 ## Ollama with Metaflow
 
+<video width="100%" controls>
+    <source src="./static/metaflow-ollama.mp4" type="video/mp4">
+    Your browser does not support the video tag.
+</video>
+
 [Ollama](https://ollama.com/) is an open-source framework for running a wide variety of generative AI models. 
 It includes an inference server, and tools for running models locally and on production servers.
 This repository demonstrates how to run any Ollama model for the lifecycle of a Metaflow task, so it can be queried from the task. 
