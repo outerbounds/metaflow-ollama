@@ -1,18 +1,21 @@
 import pandas as pd
 import altair as alt
 
+
 def beams_to_dataframe(beams):
     records = []
     for beam in beams:
         for step in beam.analysis:
-            records.append({
-                "BeamIndex": beam.index,
-                "Iteration": step.iteration,
-                "Score": step.score,
-                "Pruned": step.pruned,
-                "PrunedReason": step.pruned_reason or "",
-                "CurrentText": step.current_text or ""
-            })
+            records.append(
+                {
+                    "BeamIndex": beam.index,
+                    "Iteration": step.iteration,
+                    "Score": step.score,
+                    "Pruned": step.pruned,
+                    "PrunedReason": step.pruned_reason or "",
+                    "CurrentText": step.current_text or "",
+                }
+            )
     df = pd.DataFrame(records)
     return df
 
@@ -30,17 +33,18 @@ def trim_pruned_rows(df):
     # 1. Find earliest prune iteration per BeamIndex
     #    i.e., the smallest Iteration where Pruned == True
     pruned_iters = (
-        df_line[df_line["Pruned"] == True]
-        .groupby("BeamIndex")["Iteration"]
-        .min()
+        df_line[df_line["Pruned"] == True].groupby("BeamIndex")["Iteration"].min()
     )
 
     # 2. For each beam that was pruned, drop rows with Iteration > that prune iteration
     for beam_index, prune_iter in pruned_iters.items():
-        mask = (df_line["BeamIndex"] == beam_index) & (df_line["Iteration"] > prune_iter)
+        mask = (df_line["BeamIndex"] == beam_index) & (
+            df_line["Iteration"] > prune_iter
+        )
         df_line = df_line[~mask]
 
     return df_line
+
 
 def plot_beam_scores_altair(df):
     """
@@ -64,7 +68,7 @@ def plot_beam_scores_altair(df):
             alt.Tooltip("Iteration:Q", title="Iteration"),
             alt.Tooltip("Score:Q", title="Score"),
             alt.Tooltip("PrunedReason:N", title="Pruned Reason"),
-            alt.Tooltip("CurrentText:N", title="Current Text")
+            alt.Tooltip("CurrentText:N", title="Current Text"),
         ],
     )
 
@@ -85,15 +89,15 @@ def plot_beam_scores_altair(df):
                 alt.Tooltip("Iteration:Q", title="Iteration"),
                 alt.Tooltip("Score:Q", title="Score"),
                 alt.Tooltip("PrunedReason:N", title="Pruned Reason"),
-                alt.Tooltip("CurrentText:N", title="Current Text")
-            ]
+                alt.Tooltip("CurrentText:N", title="Current Text"),
+            ],
         )
     )
 
-    chart = alt.layer(lines, pruned_points).properties(
-        title="Beam Scores over Iterations",
-        width=600,
-        height=400
-    ).interactive()
+    chart = (
+        alt.layer(lines, pruned_points)
+        .properties(title="Beam Scores over Iterations", width=600, height=400)
+        .interactive()
+    )
 
     return chart

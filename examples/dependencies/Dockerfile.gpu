@@ -1,0 +1,54 @@
+### BUILD STAGE ###
+FROM nvidia/cuda:12.1.0-devel-ubuntu22.04 AS builder
+
+ARG PYTHON_VERSION=3.12
+
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    git \
+    wget \
+    curl \
+    bzip2
+
+RUN curl -sL https://micro.mamba.pm/api/micromamba/linux-64/1.1.0 \
+    | tar -xvj -C /usr/local bin/micromamba
+
+ENV MAMBA_EXE=/usr/local/bin/micromamba \
+    MAMBA_ROOT_PREFIX=/opt/micromamba \
+    CONDA_PREFIX=/opt/micromamba \
+    PATH=/opt/micromamba/bin:$PATH
+
+RUN micromamba create -y -n base && \
+    micromamba shell init --shell=bash --prefix="$MAMBA_ROOT_PREFIX"
+    
+RUN micromamba install python=${PYTHON_VERSION} pip -c conda-forge -y && \
+    python -m pip install --upgrade pip && \
+    python -m pip install ollama 
+    ### ADD OTHER PYTHON DEPENDENCIES
+
+RUN curl -fsSL https://ollama.com/install.sh | sh
+
+### RUNTIME STAGE ###
+FROM nvidia/cuda:12.1.0-base-ubuntu22.04
+
+RUN apt-get update && apt-get install -y \
+    curl \
+    ca-certificates \
+    bzip2 \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN curl -sL https://micro.mamba.pm/api/micromamba/linux-64/1.1.0 \
+    | tar -xvj -C /usr/local bin/micromamba
+
+ENV MAMBA_EXE=/usr/local/bin/micromamba \
+    MAMBA_ROOT_PREFIX=/opt/micromamba \
+    CONDA_PREFIX=/opt/micromamba \
+    PATH=/opt/micromamba/bin:$PATH
+
+COPY --from=builder /opt/micromamba /opt/micromamba
+COPY --from=builder /usr/local/cuda/lib64/libcudart.so* /usr/local/cuda/lib64/
+COPY --from=builder /usr/local/bin/ollama /usr/local/bin/ollama
+
+ENV LD_LIBRARY_PATH=/usr/local/cuda/lib64:$LD_LIBRARY_PATH
+
+ENTRYPOINT ["/bin/bash", "-c", "eval \"$(/usr/local/bin/micromamba shell hook --shell=bash)\" && micromamba activate base && exec \"$@\"", "--"]
