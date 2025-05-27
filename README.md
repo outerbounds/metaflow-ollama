@@ -89,7 +89,7 @@ debug: bool
     Whether to turn on verbose debugging logs.
 ```
 
-It also takes two decorators that specify the location of the cache. 
+It also takes two arguments that specify the location of the model cache. 
 
 ```
 flow_datastore_backend
