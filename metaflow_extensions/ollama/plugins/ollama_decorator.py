@@ -1,6 +1,7 @@
 from metaflow.decorators import StepDecorator
 from metaflow import current
 import functools
+import os
 
 from .ollama import OllamaManager
 
@@ -10,10 +11,10 @@ class OllamaDecorator(StepDecorator):
     This decorator is used to run Ollama APIs as Metaflow task sidecars.
 
     User code call
-    -----------
+    --------------
     @ollama(
         models=[...],
-        backend='local'
+        ...
     )
 
     Valid backend options
@@ -23,10 +24,8 @@ class OllamaDecorator(StepDecorator):
     - (TODO) 'remote': Spin up separate instance to serve Ollama models.
 
     Valid model options
-    ----------------
-        - 'llama3.2'
-        - 'llama3.3'
-        - any model here https://ollama.com/search
+    -------------------
+    Any model here https://ollama.com/search, e.g. 'llama3.2', 'llama3.3'
 
     Parameters
     ----------
@@ -34,10 +33,28 @@ class OllamaDecorator(StepDecorator):
         List of Ollama containers running models in sidecars.
     backend: str
         Determines where and how to run the Ollama process.
+    force_pull: bool
+        Whether to run `ollama pull` no matter what, or first check the remote cache in Metaflow datastore for this model key.
+    skip_push_check: bool
+        Whether to skip the check that populates/overwrites remote cache on terminating an ollama model.
     """
 
     name = "ollama"
-    defaults = {"models": [], "backend": "local", "debug": False}
+    defaults = {
+        "models": [],
+        "backend": "local",
+        "force_pull": False,
+        "skip_push_check": False,
+        "debug": False,
+    }
+
+    def step_init(
+        self, flow, graph, step_name, decorators, environment, flow_datastore, logger
+    ):
+        super().step_init(
+            flow, graph, step_name, decorators, environment, flow_datastore, logger
+        )
+        self.flow_datastore_backend = flow_datastore._storage_impl
 
     def task_decorate(
         self, step_func, flow, graph, retry_count, max_user_code_retries, ubf_context
@@ -48,6 +65,9 @@ class OllamaDecorator(StepDecorator):
                 self.ollama_manager = OllamaManager(
                     models=self.attributes["models"],
                     backend=self.attributes["backend"],
+                    flow_datastore_backend=self.flow_datastore_backend,
+                    force_pull=self.attributes["force_pull"],
+                    skip_push_check=self.attributes["skip_push_check"],
                     debug=self.attributes["debug"],
                 )
             except Exception as e:
@@ -56,10 +76,7 @@ class OllamaDecorator(StepDecorator):
             try:
                 step_func()
             finally:
-                try:
-                    self.ollama_manager.terminate_models()
-                except Exception as term_e:
-                    print(f"[@ollama] Error during sidecar termination: {term_e}")
+                self.ollama_manager.terminate_models()
             if self.attributes["debug"]:
                 print(f"[@ollama] process statuses: {self.ollama_manager.processes}")
                 print(f"[@ollama] process runtime stats: {self.ollama_manager.stats}")

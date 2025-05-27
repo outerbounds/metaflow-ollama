@@ -9,6 +9,7 @@ import nltk
 import numpy as np
 from nltk.tokenize import sent_tokenize
 from ollama import Client
+
 # from sentence_transformers import SentenceTransformer
 
 # logging.basicConfig(
@@ -17,11 +18,13 @@ from ollama import Client
 # )
 # logger = logging.getLogger(__name__)
 
-nltk.download('punkt')
-nltk.download('punkt_tab')
+nltk.download("punkt")
+nltk.download("punkt_tab")
+
 
 class BeamStatus:
     """Enumeration of possible beam states."""
+
     RUNNING = "RUNNING"
     PRUNED = "PRUNED"
     COMPLETED = "COMPLETED"
@@ -32,6 +35,7 @@ class BeamStatus:
 @dataclass
 class GenResult:
     """Stores the result of a single generation step."""
+
     next_texts: List[str]
     lookahead_texts: List[str]
     stop_reasons: List[str]
@@ -41,6 +45,7 @@ class GenResult:
 @dataclass
 class BeamAnalysis:
     """Stores analysis of why a beam was scored/pruned as it was."""
+
     iteration: int
     score: float
     score_breakdown: Dict[str, float]
@@ -53,6 +58,7 @@ class BeamAnalysis:
 @dataclass
 class Beam:
     """Represents a single beam in the search."""
+
     prompt: str
     index: int
     current_text: str
@@ -94,20 +100,21 @@ class Beam:
 
 class aLaCarteRewardModel:
     """Reward model combining multiple scoring metrics."""
+
     def __init__(self, weights: Optional[Dict[str, float]] = None):
         self.weights = weights or {
-            # 'length': 0.25,      
-            'coherence': 0.25,   
-            'diversity': 0.25,    
-            'relevance': 0.50,    
-            # 'similarity': 0.25    
+            # 'length': 0.25,
+            "coherence": 0.25,
+            "diversity": 0.25,
+            "relevance": 0.50,
+            # 'similarity': 0.25
         }
         # try:
-            # self.sentence_model = SentenceTransformer('all-MiniLM-L6-v2')
-            # logger.debug("SentenceTransformer loaded successfully.")
+        # self.sentence_model = SentenceTransformer('all-MiniLM-L6-v2')
+        # logger.debug("SentenceTransformer loaded successfully.")
         # except Exception as e:
-            # logger.exception("Error loading SentenceTransformer: %s", e)
-            # raise e
+        # logger.exception("Error loading SentenceTransformer: %s", e)
+        # raise e
 
     def _score_length(self, text: str) -> float:
         words = len(text.split())
@@ -128,7 +135,7 @@ class aLaCarteRewardModel:
                 coherence_score *= 0.8
             if not sent[0].isupper():
                 coherence_score *= 0.9
-            if sent[-1] not in '.!?':
+            if sent[-1] not in ".!?":
                 coherence_score *= 0.9
         return coherence_score
 
@@ -140,8 +147,8 @@ class aLaCarteRewardModel:
         return min(1.0, (unique_words / len(words)) * 2)
 
     def _score_relevance(self, prompt: str, completion: str) -> float:
-        prompt_terms = set(re.findall(r'\w+', prompt.lower()))
-        completion_terms = set(re.findall(r'\w+', completion.lower()))
+        prompt_terms = set(re.findall(r"\w+", prompt.lower()))
+        completion_terms = set(re.findall(r"\w+", completion.lower()))
         if not prompt_terms:
             return 0.5
         overlap = len(prompt_terms.intersection(completion_terms))
@@ -161,15 +168,19 @@ class aLaCarteRewardModel:
     #         # logger.exception("Error computing embedding similarity: %s", e)
     #         return 0.0
 
-    def score_with_breakdown(self, prompt: str, completion: str) -> Tuple[float, Dict[str, float]]:
+    def score_with_breakdown(
+        self, prompt: str, completion: str
+    ) -> Tuple[float, Dict[str, float]]:
         scores = {
             # 'length': self._score_length(completion),
-            'coherence': self._score_coherence(completion),
-            'diversity': self._score_diversity(completion),
-            'relevance': self._score_relevance(prompt, completion),
+            "coherence": self._score_coherence(completion),
+            "diversity": self._score_diversity(completion),
+            "relevance": self._score_relevance(prompt, completion),
             # 'similarity': self._score_embedding(prompt, completion)
         }
-        final_score = sum(score * self.weights.get(metric, 0) for metric, score in scores.items())
+        final_score = sum(
+            score * self.weights.get(metric, 0) for metric, score in scores.items()
+        )
         return final_score, scores
 
 
@@ -179,6 +190,7 @@ class OllamaBeamSearch:
         https://github.com/huggingface/search-and-learn/blob/169fcc8a8c684f373a6d2630d28650859199a935/src/sal/search/beam_search.py
         https://arxiv.org/abs/2408.03314 ~ Scaling LLM Test-Time Compute Optimally can be More Effective than Scaling Model Parameters
     """
+
     def __init__(
         self,
         model_name: str,
@@ -194,7 +206,7 @@ class OllamaBeamSearch:
         sort_completed: bool = True,
         system_prompt: Optional[str] = None,
         pruning_threshold_ratio: float = 0.85,
-        early_stopping_patience: int = 5
+        early_stopping_patience: int = 5,
     ):
         self.client = Client()
         self.model_name = model_name
@@ -236,7 +248,7 @@ class OllamaBeamSearch:
         return default_prompt
 
     def _clean_text_join(self, current: str, new: str) -> str:
-        new = new.strip().lstrip('.')
+        new = new.strip().lstrip(".")
         if current:
             current = current.rstrip()
             if current and current[-1].isalnum() and new and new[0].isalnum():
@@ -249,7 +261,9 @@ class OllamaBeamSearch:
             return f"{self.system_prompt}\n\n{user_prompt}"
         return f"{self.system_prompt}\n\n{user_prompt}\n{current_text}"
 
-    async def _generate_step(self, prompt: str, current_text: str, lookahead_steps: int) -> GenResult:
+    async def _generate_step(
+        self, prompt: str, current_text: str, lookahead_steps: int
+    ) -> GenResult:
         try:
             formatted_prompt = self._format_prompt(prompt, current_text)
             loop = asyncio.get_event_loop()
@@ -261,11 +275,11 @@ class OllamaBeamSearch:
                     options={
                         "temperature": self.temperature,
                         "top_p": self.top_p,
-                        "num_predict": self.max_tokens // self.max_iterations
-                    }
-                )
+                        "num_predict": self.max_tokens // self.max_iterations,
+                    },
+                ),
             )
-            next_text = response.get('response', "").strip()
+            next_text = response.get("response", "").strip()
             completion_tokens = len(next_text.split())
 
             lookahead_text = ""
@@ -280,18 +294,18 @@ class OllamaBeamSearch:
                         prompt=lookahead_prompt,
                         options={
                             "temperature": self.temperature * 0.5,
-                            "num_predict": self.max_tokens // self.max_iterations
-                        }
-                    )
+                            "num_predict": self.max_tokens // self.max_iterations,
+                        },
+                    ),
                 )
-                lookahead_text = lookahead_response.get('response', "").strip()
+                lookahead_text = lookahead_response.get("response", "").strip()
 
             stop_reason = "length" if completion_tokens >= self.max_tokens else None
             return GenResult(
                 next_texts=[next_text],
                 lookahead_texts=[lookahead_text],
                 stop_reasons=[stop_reason],
-                completion_tokens=completion_tokens
+                completion_tokens=completion_tokens,
             )
         except Exception as e:
             # logger.exception("Error during generation step: %s", e)
@@ -299,14 +313,17 @@ class OllamaBeamSearch:
                 next_texts=[""],
                 lookahead_texts=[""],
                 stop_reasons=["error"],
-                completion_tokens=0
+                completion_tokens=0,
             )
 
     async def search(self, prompt: str) -> List[Beam]:
         # logger.info("Starting beam search for prompt: '%s'", prompt)
 
         # Initialize beams
-        beams = [Beam(prompt=prompt, index=i, current_text="", score=0.0) for i in range(self.n_beams)]
+        beams = [
+            Beam(prompt=prompt, index=i, current_text="", score=0.0)
+            for i in range(self.n_beams)
+        ]
         active_beams = beams.copy()
         completed_beams = []
         pruned_beams = []
@@ -326,7 +343,7 @@ class OllamaBeamSearch:
                 self._generate_step(
                     beam.prompt,
                     beam.current_text,
-                    self.lookahead if iteration < self.max_iterations - 1 else 0
+                    self.lookahead if iteration < self.max_iterations - 1 else 0,
                 )
                 for beam in active_beams
             ]
@@ -337,7 +354,9 @@ class OllamaBeamSearch:
             for beam, gen_result in zip(active_beams, gen_results):
                 if gen_result.next_texts and gen_result.next_texts[0]:
                     # Join text
-                    beam.current_text = self._clean_text_join(beam.current_text, gen_result.next_texts[0])
+                    beam.current_text = self._clean_text_join(
+                        beam.current_text, gen_result.next_texts[0]
+                    )
                     beam.history.append(gen_result.next_texts[0])
                     beam.completion_tokens += gen_result.completion_tokens
 
@@ -353,7 +372,9 @@ class OllamaBeamSearch:
                             self.global_generated_texts.add(beam.current_text)
 
                 # If we hit a stop reason or got empty text, mark completed
-                if (gen_result.stop_reasons and gen_result.stop_reasons[0] == "length") or not gen_result.next_texts[0]:
+                if (
+                    gen_result.stop_reasons and gen_result.stop_reasons[0] == "length"
+                ) or not gen_result.next_texts[0]:
                     beam.completed = True
                     beam.status = BeamStatus.COMPLETED
                     completed_beams.append(beam)
@@ -365,9 +386,11 @@ class OllamaBeamSearch:
 
             ## Score each active beam
             for beam in new_active_beams:
-                score, breakdown = self.reward_model.score_with_breakdown(beam.prompt, beam.current_text)
+                score, breakdown = self.reward_model.score_with_breakdown(
+                    beam.prompt, beam.current_text
+                )
                 beam.score = score
-                
+
                 if score - best_scores[beam.index] < 1e-3:
                     no_improvement_counter[beam.index] += 1
                 else:
@@ -380,7 +403,7 @@ class OllamaBeamSearch:
                     score_breakdown=breakdown,
                     pruned=False,
                     rank_at_iteration=None,
-                    current_text=beam.current_text
+                    current_text=beam.current_text,
                 )
                 beam.add_analysis(analysis)
 
@@ -405,7 +428,9 @@ class OllamaBeamSearch:
                     if beam.score < threshold:
                         beam.pruned = True
                         beam.status = BeamStatus.PRUNED
-                        reason = f"score {beam.score:.3f} below threshold {threshold:.3f}"
+                        reason = (
+                            f"score {beam.score:.3f} below threshold {threshold:.3f}"
+                        )
                         if beam.analysis:
                             beam.analysis[-1].pruned = True
                             beam.analysis[-1].pruned_reason = reason
@@ -423,7 +448,14 @@ class OllamaBeamSearch:
 
         if not all_beams:
             # logger.error("No beams produced a valid completion.")
-            return [Beam(prompt=prompt, index=0, current_text="No valid completions generated.", score=0.0)]
+            return [
+                Beam(
+                    prompt=prompt,
+                    index=0,
+                    current_text="No valid completions generated.",
+                    score=0.0,
+                )
+            ]
 
         # Sort all beams by final score
         all_beams.sort(key=lambda b: b.score, reverse=True)
@@ -433,18 +465,20 @@ class OllamaBeamSearch:
             # logger.info("Sorting final beams by score.")
             pass
         if len(all_beams) > self.n_beams:
-            all_beams = all_beams[:self.n_beams]
+            all_beams = all_beams[: self.n_beams]
 
         # Add final analysis for each selected beam
         for rank, beam in enumerate(all_beams):
-            final_score, final_breakdown = self.reward_model.score_with_breakdown(beam.prompt, beam.current_text)
+            final_score, final_breakdown = self.reward_model.score_with_breakdown(
+                beam.prompt, beam.current_text
+            )
             final_analysis = BeamAnalysis(
                 iteration=self.max_iterations,
                 score=final_score,
                 score_breakdown=final_breakdown,
                 pruned=beam.pruned,
                 rank_at_iteration=rank,
-                current_text=beam.current_text
+                current_text=beam.current_text,
             )
             beam.add_analysis(final_analysis)
 

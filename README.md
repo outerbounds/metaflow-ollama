@@ -18,7 +18,7 @@ It can be used in two modes.
 
 #### Mode 1: annotate a Metaflow `@step` with `@ollama` 
 
-To simply pull and run models so they are available for the lifecycle of a Metaflow task, use the `@ollama` step decorator.
+To pull and run models so they are available for the lifecycle of a Metaflow task, use the `@ollama` step decorator.
 
 ```python
     @pypi(packages={'ollama': ''})
@@ -40,6 +40,20 @@ To simply pull and run models so they are available for the lifecycle of a Metaf
         self.next(self.end)
 ```
 
+The arguments to the decorator are:
+```
+models: list[str]
+    List of Ollama model names.
+backend: str
+    Determines where and how to run the Ollama process.
+force_pull: bool
+    Whether to run `ollama pull` no matter what, or first check the remote cache in Metaflow datastore for this model key.
+skip_push_check: bool
+    Whether to skip the check that populates/overwrites remote cache on terminating an ollama model.
+debug: bool
+    Whether to turn on verbose debugging logs.
+```
+
 #### Mode 2: `from metaflow.plugins.ollama import OllamaManager`
 
 Sometimes, you may prefer managing ollama processes more directly. 
@@ -52,10 +66,38 @@ For this, use the `OllamaManager` from within or outside a Metaflow task.
         from ollama import ChatResponse
         from metaflow.plugins.ollama import OllamaManager 
 
-        ollama_manager = OllamaManager(models=[self.input], debug=True)
+        ollama_manager = OllamaManager(
+            models=[self.input], 
+            flow_datastore_backend=self._datastore.parent_datastore._storage_impl,
+        )
         self.response: ChatResponse = chat(model=self.input, messages=[self.config.message])
         ollama_manager.terminate_models()
         self.next(self.end)
+```
+
+The `OllamaManager` constructor takes the same arguments as the decorator:
+```
+models: list[str]
+    List of Ollama model names.
+backend: str
+    Determines where and how to run the Ollama process.
+force_pull: bool
+    Whether to run `ollama pull` no matter what, or first check the remote cache in Metaflow datastore for this model key.
+skip_push_check: bool
+    Whether to skip the check that populates/overwrites remote cache on terminating an ollama model.
+debug: bool
+    Whether to turn on verbose debugging logs.
+```
+
+It also takes two arguments that specify the location of the model cache. 
+
+```
+flow_datastore_backend
+    When running from inside a flow, set as shown above using self._datastore.parent_datastore._storage_impl.
+
+remote_storage_root
+    When running outside a flow, or to hard code the remote data store location, pass an S3 path.
+    Giving permission to an S3 bucket from your metaflow-ollama runtime is not in scope of this library.
 ```
 
 ## Setup
@@ -90,6 +132,6 @@ from metaflow.plugins.ollama import OllamaManager
 
 - For remote processes (e.g., `@kubernetes` tasks), the extension installs ollama binary dynamically. This could be cached.
     - On Outerbounds, this is handled automatically via `fast-bakery`. 
-- Models are pulled via `ollama pull <>`. Similar to previous line, these models could be cached in S3 to control/optimize network throughput.
-    - [Where are (ollama) models stored?](https://github.com/ollama/ollama/blob/main/docs/faq.md#where-are-models-stored)
+    - The dynamic installation requires that `curl` exist in the Metaflow task image.
+- Custom models are not currently supported. It is not impossible they can work, but at the moment this package does not natively integrate with Ollama's custom model registration functions. If desired, for example to connect with upstream @model artifacts produced in flows, please contact Outerbounds.
 - Support backends beyond the "local" runtime. For example, so a `@kubernetes` task could submit requests to other pods, previously running servers, etc.
