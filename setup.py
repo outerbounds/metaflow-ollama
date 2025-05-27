@@ -3,7 +3,7 @@ from setuptools import setup, find_namespace_packages
 version = "0.1.0"
 
 setup(
-    name="metaflow-ollama",
+    name="metaflow_ollama",
     version=version,
     description="An EXPERIMENTAL Ollama decorator for Metaflow",
     author="Outerbounds",
