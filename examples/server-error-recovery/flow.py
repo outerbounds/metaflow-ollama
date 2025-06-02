@@ -108,8 +108,6 @@ class ProductionOllamaHandlingFlow(FlowSpec):
     def _robust_request_with_retry(self, request_id: int, max_retries: int = 10, base_wait_time: int = 2) -> bool:
         """
         THE CORE PATTERN: Robust request with exponential backoff retry.
-        
-        This is the essential function every production Ollama user needs.
 
         max_retries is the important parameter here, which needs to play in sync with how the circuit breaker in @ollama resets the server.
         The key insight is to make this number big enough so this function doesn't give up retrying as the circuit breaker is resetting the server,
