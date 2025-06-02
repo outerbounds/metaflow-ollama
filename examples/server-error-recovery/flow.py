@@ -6,13 +6,7 @@ import time
 
 class ProductionOllamaHandlingFlow(FlowSpec):
     """
-    Essential production patterns for Ollama: error handling and exponential retry.
-    
-    This example demonstrates the core concepts every user needs:
-    - Proper RuntimeError handling for circuit breaker states
-    - Exponential backoff retry logic
-    - Circuit breaker configuration
-    - Smart exit conditions
+    Production patterns for Ollama: error handling and exponential retry.
     """
     
     max_requests = Parameter(
@@ -41,7 +35,7 @@ class ProductionOllamaHandlingFlow(FlowSpec):
         """
         Demonstrates robust request processing with exponential backoff retry.
         
-        Key patterns shown:
+        Key patterns:
         1. Handle RuntimeError exceptions (circuit breaker)
         2. Implement exponential backoff for retries
         3. Track metrics for operational visibility
@@ -95,8 +89,7 @@ class ProductionOllamaHandlingFlow(FlowSpec):
                 if circuit_breaker_hits >= 3:
                     print(f"[@prod] Early exit: Circuit breaker hit {circuit_breaker_hits} times")
                     break
-            
-            # Progress updates
+        
             if (request_id + 1) % 10 == 0:
                 success_rate = successful_requests / total_requests if total_requests > 0 else 0
                 print(f"[@prod] Progress: {success_rate:.1%} success rate, {circuit_breaker_hits} circuit breaker hits")
