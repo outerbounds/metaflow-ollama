@@ -53,7 +53,7 @@ class HelloOllama(FlowSpec):
         disabled=True
     )  # Tell --environment=fast-bakery to ignore building for this step.
     @kubernetes(gpu=1, image="docker.io/eddieob/ollama-metaflow-task:gpu")
-    @ollama(models=["qwen:0.5b"], skip_push_check=True)
+    @ollama(models=["qwen:0.5b"])
     @step
     def end(self):
         """
