@@ -15,6 +15,13 @@ class EmptyOllamaManifestCacheException(MetaflowException):
         super(EmptyOllamaManifestCacheException, self).__init__(message)
 
 
+class CircuitBreakerInvalidStateException(MetaflowException):
+    headline = "Circuit breaker status is invalid."
+
+    def __init__(self, message):
+        super(CircuitBreakerInvalidStateException, self).__init__(message)
+
+
 class EmptyOllamaBlobCacheException(MetaflowException):
     headline = "Blob not found."
 
