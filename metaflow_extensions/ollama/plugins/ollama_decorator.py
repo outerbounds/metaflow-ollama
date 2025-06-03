@@ -1,10 +1,3 @@
-# from metaflow.decorators import StepDecorator
-# from metaflow import current
-# import functools
-# import os
-
-# from .ollama import OllamaManager
-
 from metaflow.decorators import StepDecorator
 from metaflow import current
 import functools
@@ -13,9 +6,6 @@ import threading
 
 from .ollama import OllamaManager, OllamaRequestInterceptor
 from .status_card import OllamaStatusCard, CardDecoratorInjector
-
-__mf_promote_submodules__ = ["plugins.ollama"]
-
 
 class OllamaDecorator(StepDecorator, CardDecoratorInjector):
     """
@@ -155,8 +145,7 @@ class OllamaDecorator(StepDecorator, CardDecoratorInjector):
                     status_card=self.status_card,
                 )
 
-                # "Protect" requests by monkey-patching ollama package.
-                # This 
+                # Monkey-patch key ollama python client interfaces to pass requests through health monitor.
                 self.request_interceptor = OllamaRequestInterceptor(
                     self.ollama_manager.circuit_breaker, self.attributes["debug"]
                 )
