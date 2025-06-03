@@ -6,11 +6,8 @@ import time
 
 class ProductionOllamaHandlingFlow(FlowSpec):
     """
-    Essential production patterns for Ollama: error handling and exponential retry.
-
-    This example demonstrates the core concepts every user needs:
-    - Proper RuntimeError handling for circuit breaker states
-    - Exponential backoff retry logic
+    This example demonstrates:
+    - RuntimeError handling when server is unhealthy with exponential backoff retry logic
     - Circuit breaker configuration
     - Smart exit conditions
     """
@@ -31,30 +28,22 @@ class ProductionOllamaHandlingFlow(FlowSpec):
         # debug=True,
         # Essential circuit breaker configuration
         circuit_breaker_config={
-            "failure_threshold": 3,  # Open after 3 failures
-            "recovery_timeout": 30,  # Test recovery after 30s
-            "reset_timeout": 60,  # Restart after 60s open
+            "failure_threshold": 3, 
+            "recovery_timeout": 30, 
+            "reset_timeout": 60,
         },
     )
     @step
     def start(self):
         """
         Demonstrates robust request processing with exponential backoff retry.
-
-        Key patterns shown:
-        1. Handle RuntimeError exceptions (circuit breaker)
-        2. Implement exponential backoff for retries
-        3. Track metrics for operational visibility
-        4. Use smart exit conditions to prevent waste
         """
         print("[@prod] Starting production error handling demo")
 
-        # Track basic metrics
         successful_requests = 0
         failed_requests = 0
         circuit_breaker_hits = 0
 
-        # Process requests with robust error handling
         p = ProgressBar(max=self.max_requests, label="Requests processed")
         current.card["progress"].append(p)
         current.card["progress"].refresh()
@@ -79,26 +68,22 @@ class ProductionOllamaHandlingFlow(FlowSpec):
                 if self._last_error_was_circuit_breaker:
                     circuit_breaker_hits += 1
 
-            # Smart exit conditions - save compute when things go wrong
             total_requests = successful_requests + failed_requests
             if total_requests >= 10:
                 success_rate = successful_requests / total_requests
 
-                # Exit early if success rate is too low
                 if success_rate < 0.3:
                     print(
                         f"[@prod] Early exit: Success rate too low ({success_rate:.1%})"
                     )
                     break
 
-                # Exit if circuit breaker is getting hit too often
                 if circuit_breaker_hits >= 3:
                     print(
                         f"[@prod] Early exit: Circuit breaker hit {circuit_breaker_hits} times"
                     )
                     break
 
-            # Progress updates
             if (request_id + 1) % 10 == 0:
                 success_rate = (
                     successful_requests / total_requests if total_requests > 0 else 0
@@ -125,8 +110,6 @@ class ProductionOllamaHandlingFlow(FlowSpec):
     ) -> bool:
         """
         THE CORE PATTERN: Robust request with exponential backoff retry.
-
-        This is the essential function every production Ollama user needs.
 
         max_retries is the important parameter here, which needs to play in sync with how the circuit breaker in @ollama resets the server.
         The key insight is to make this number big enough so this function doesn't give up retrying as the circuit breaker is resetting the server,
